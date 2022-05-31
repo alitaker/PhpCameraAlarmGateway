@@ -1,6 +1,8 @@
 # Php Camera Alarm Gateway
 This script (running as a Server Daemon) listen to IP Camera Alarm messages, decodes messages and send triggers to ZoneMinder, Domoticz, Custom URLs....
 
+# This is a fork with an implementation to call Home Assistant REST API to create/update a binary sensor when an alarm is triggered
+
 This allows to offload the motion detection work to each camera.
 
 
