@@ -35,25 +35,29 @@ class PhpCameraAlarmProcess {
 	// (extend for each type)
 	public function process($client_ip, $message_received){
 		if(true){
-			$this->performActions($client_ip);			
+			$this->performActions($client_ip, "", "");
 		}
 		else{
-			System_Daemon::debug( "# [$client_ip] Process canceled : Invalid/unsupported message!");						
+			System_Daemon::debug( "# [$client_ip] Process canceled : Invalid/unsupported message!");
 		}
 		
 	}
 
 
 	// -----------------------------------------------------------------------------------
-	protected function performActions($ip){
+	protected function performActions($ip, $event, $status){
 		$actions= $this->cfg['cameras'][$ip]['actions'];
 				
 		if(is_array($actions) and count($actions) ){
 			System_Daemon::debug( "# [$ip] processing actions...");
 			foreach($actions as $act_type => $params){
 				if(preg_match("#^url_#",$act_type)){
-					System_Daemon::info( "# [$ip] ACTION=custom_url , url = {$params['url']}");						
-					$this->action_custom_url($params['url']);
+					System_Daemon::info( "# [$ip] ACTION=custom_url , url = {$params['url']}");
+					$this->action_custom_url($ip, $params['url']);
+				}
+				elseif(preg_match("#^ha_#",$act_type)){
+					System_Daemon::info( "# [$ip] ACTION=home_assistant , url = {$params['url']}");						
+					$this->action_ha($ip, $params, $event, $status);
 				}
 				else{
 					$method="action_$act_type";
@@ -112,6 +116,89 @@ class PhpCameraAlarmProcess {
 	// -----------------------------------------------------------------------------------
 	private function action_custom_url($ip,$url){
 		return $this->callUrl($url);
+	}
+
+	//Returns event to Home Assistant. Appends event to API url (e.g. http://ha:8123/api/states/binary_sensor.id_EVENT)
+	//Can use auth token from $cfg['ha']:
+	// -----------------------------------------------------------------------------------
+	private function action_ha($ip,$p, $event, $status){
+		if($p['url']){
+			if (!isset($status) or $status == '') {
+				$status == 'Start';
+			}
+			if (!isset($event) or $event == '') {
+				$event == 'MotionDetect';
+			}
+			
+
+			$cam = $this->cfg['cameras'][$ip];
+			
+			if (isset($cam['ha_statuses']) and $status == $cam['ha_statuses'][0]) {
+				$state = 'on';
+				if (isset($cam['ha_delay1'])) {
+					$delay = 1;
+				} else {
+					$delay = 0;
+				}
+			} else {
+				$state = 'off';
+				if (isset($cam['ha_delay2'])) {
+					$delay = $cam['ha_delay2'];
+				} else {
+					$delay = 1;
+				}
+			}
+			if ($delay>0) {
+				sleep($delay);
+			}
+			
+			if (isset($cam['ha_friendly_name'])) {
+				$friendly_name = ', "friendly_name": "'.$cam['ha_friendly_name'].'"';
+			} else {
+				$friendly_name = '';
+			}
+			
+			if (isset($cam['ha_icon'])) {
+				$ha_icon = ', "icon": "mdi:'.$cam['ha_icon'].'"';
+			} else {
+				$ha_icon = '';
+			}
+			
+			if (isset($p['token'])) {
+				$token = "Authorization: Bearer ".($p['token'])."\r\n";
+			} elseif (isset($this->cfg['ha']) and isset($this->cfg['ha']['token'])) {
+				$token = "Authorization: Bearer ".($this->cfg['ha']['token'])."\r\n";
+			} else {
+				$token = '';
+			}
+			
+			$opts = array(
+				'http' =>array(
+					'method'  => 'POST',
+					'header'  => "Content-Type: application/json\r\n".
+					  $token,
+					'content' => '{"state": "'.$state.'", "attributes": {"device_class": "motion"'.$friendly_name.$ha_icon.'}}',
+					'timeout' => 60
+				),
+				"ssl"=>array(
+					"verify_peer"=>false,
+					"verify_peer_name"=>false,
+				),				
+			  
+			);
+			
+			$context  = stream_context_create($opts);
+			$url = $p['url'].'_'.$event;
+			$result = file_get_contents($url, false, $context);
+			System_Daemon::debug( "# ==========> called : $url");
+			//System_Daemon::debug( "# ==========> data:".print_r($opts, true));
+			System_Daemon::debug( "# ==========> result : $result");
+			return true;					
+			
+
+		} else{
+			System_Daemon::err( "# ERR! action_ha canceled : No URL provided");			
+		}
 	}
 
 

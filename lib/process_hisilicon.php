@@ -37,24 +37,26 @@ class PhpCameraAlarmProcess_hisilicon extends PhpCameraAlarmProcess {
 		isset($p['event'])	and $trig_event		=$p['event']	or $trig_event	='MotionDetect';
 		isset($p['status'])	and $trig_status	=$p['status']	or $trig_status	='Start';
 
+		$params= $this->cfg['cameras'][$ip];
+		
 		if(is_array($arr)){
 			//System_Daemon::debug( "# [$ip] JSON ".print_r($arr,true));
 			if($event=$arr['Event'] ){
-				if($event == $trig_event){
+				if($event == $trig_event or (isset($params['ha_events']) and in_array($event, $params['ha_events']))){
 					$status=$arr['Status'];
-					if($status==$trig_status){
-						$this->performActions($ip);			
+					if($status==$trig_status or (isset($params['ha_statuses']) and in_array($status, $params['ha_statuses']))){
+						$this->performActions($ip, $event, $status);
 					}
 					else{
-						System_Daemon::debug( "# [$ip] process canceled : ignored '$status' status");			
+						System_Daemon::debug( "# [$ip] process canceled : ignored '$status' status");
 					}
 				}
 				else{
-					System_Daemon::debug( "# [$ip] process canceled : unknown '{$event}' event");			
+					System_Daemon::debug( "# [$ip] process canceled : unknown '{$event}' event");
 				}
 			}
 			else{
-				System_Daemon::debug( "# [$ip] process canceled : not an event");			
+				System_Daemon::debug( "# [$ip] process canceled : not an event");
 			}
 		}
 		else{

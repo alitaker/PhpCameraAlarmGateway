@@ -9,6 +9,10 @@ $cfg['server_port']	=15000;				//set your the port to listen to
 //$cfg['server_ip']	='10.1.100.101';	//set your server IP if not auto detected correctly
 
 
+// Home Assistant #####################################################################
+$cfg['ha']['token' ] = 'ey1234567890'; //set your Home Assistant token
+
+
 // URLs of servers used in camera actions ############################################ 
 $cfg['urls']['zoneminder']		='http://zm.lo.lo/zm';
 $cfg['urls']['domoticz']		='http://domoticz.lo.lo:8080';
@@ -69,6 +73,15 @@ $cfg['cameras']['10.1.208.2']['actions']['domoticz']['id']	= '242';
 // 10.1.208.3 (garden camera) =============================================================================
 $cfg['cameras']['10.1.208.3']['type']= 'hisilicon';
 $cfg['cameras']['10.1.208.3']['actions']['url_custom1']['url']	= 'http://192.168.1.0/switchLightOn?Night=1';
-$cfg['cameras']['10.1.208.2']['actions']['domoticz']['id']		= '243';
+$cfg['cameras']['10.1.208.3']['actions']['domoticz']['id']		= '243';
+
+// 10.1.208.4 (inside camera) =============================================================================
+$cfg['cameras']['10.1.208.4']['type']= 'hisilicon';
+$cfg['cameras']['10.1.208.4']['ha_events']= ['HumanDetect', 'MotionDetect']; //Events to process from the camera JSON
+$cfg['cameras']['10.1.208.4']['ha_statuses']= ['Start', 'Stop'];  //Actions to process from the camera (remove Stop if you set up an automation in HA to stop the detection automatically
+$cfg['cameras']['10.1.208.4']['ha_delay2'] = 2; //Seconds to sleep before sending the off state
+$cfg['cameras']['10.1.208.4']['ha_friendly_name'] = "Inside Camera"; //HA UI name
+$cfg['cameras']['10.1.208.4']['ha_icon'] = "motion-sensor"; //HA UI icon
+$cfg['cameras']['10.1.208.4']['actions']['ha_on']['url']	= 'https://10.1.208.4:8123/api/states/binary_sensor.12345678'; //Endpoint to create in HA (should be unique)
 
 ?>
